@@ -1,0 +1,61 @@
+.file-upload-area {
+  background-color: var(--color-gray-100);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.file-upload-area h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-gray-800);
+  margin-bottom: 1rem;
+}
+
+.upload-zone {
+  border: 2px dashed var(--color-gray-300);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.upload-icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+.upload-zone p {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  margin-bottom: 0.5rem;
+}
+
+.or {
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
+}
+
+.select-files-button {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-white);
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.select-files-button:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.supported-files {
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+

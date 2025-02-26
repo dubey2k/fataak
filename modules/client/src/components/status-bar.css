@@ -1,0 +1,43 @@
+.status-bar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-white);
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  margin-top: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-wifi-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 0.5rem;
+  color: var(--color-gray-400);
+}
+
+.status-wifi-icon.connected {
+  color: #10b981;
+}
+
+.connection-status span {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.session-id {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.session-id-value {
+  font-family: monospace;
+  color: var(--color-primary);
+}
+

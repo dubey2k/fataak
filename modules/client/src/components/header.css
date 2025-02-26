@@ -1,0 +1,33 @@
+.header {
+    text-align: center;
+  }
+  
+  .header-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: white;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .header-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #3b82f6;
+  }
+  
+  .header-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+  }
+  
+  .header-description {
+    margin-top: 0.5rem;
+    color: #4b5563;
+  }
+  
+  

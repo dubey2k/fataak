@@ -1,0 +1,82 @@
+.home-container{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+    justify-content: space-between;
+    height: 100lvh;
+    width: 100vw;
+    background-image: url("https://images.pexels.com/photos/440731/pexels-photo-440731.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2");
+}
+.sidelist{
+    flex: 2;
+}
+
+.instructions{
+    font-size: 1rem;
+    flex: 1;
+}
+
+.action-button{
+    
+}
+
+.receiver-container{
+    height: 100%;
+    flex:7;
+    display: flex;
+    flex-direction: column;
+}
+
+#receiver-area{
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex: 3;
+    background-color: aqua;
+    position: relative;
+}
+
+.receiver-item{
+    display: flex;
+    flex-direction: column;
+    border-radius: 200px;
+    position: absolute;
+    align-items: center;
+}
+
+.receiver-icon{
+    background-color: blue;
+    height: 50px;
+    width: 50px;
+    border-radius: 25px;
+    margin: 5px;
+}
+
+.receiver-display-name{
+    font-size: 12px;
+    color: black;
+    font-weight: bold;
+}
+
+
+.app {
+    display: flex;
+    height: 100dvh;
+}
+  
+.main-content {
+    flex: 1;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+  
+.app-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-gray-800);
+    margin-bottom: 0.5rem;
+}
+  
+  

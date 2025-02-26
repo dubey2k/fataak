@@ -1,0 +1,54 @@
+.connected-devices {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 1.5rem;
+  }
+  
+  .connected-devices-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1rem;
+  }
+  
+  .device-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .device-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  
+  .device-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    transition: background-color 0.3s ease;
+  }
+  
+  .device-button:hover {
+    background-color: #e5edff;
+  }
+  
+  .device-icon {
+    width: 2rem;
+    height: 2rem;
+    color: #3b82f6;
+    margin-bottom: 0.5rem;
+  }
+  
+  .device-name {
+    font-size: 0.875rem;
+    color: #4b5563;
+  }
+  
+  

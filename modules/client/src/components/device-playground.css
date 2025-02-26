@@ -1,0 +1,152 @@
+.device-playground {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 600px;
+  position: relative;
+}
+
+.searching-devices {
+  text-align: center;
+}
+
+.wifi-icon {
+  width: 4rem;
+  height: 4rem;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.searching-devices h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-gray-800);
+  margin-bottom: 1rem;
+}
+
+.searching-devices p {
+  color: var(--color-gray-600);
+}
+
+.devices-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-gray-800);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.orbital-view {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  margin: 0 auto;
+}
+
+.orbital-circles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.orbital-circle {
+  position: absolute;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.orbital-circle-1 { width: 200px; height: 200px; }
+.orbital-circle-2 { width: 300px; height: 300px; }
+.orbital-circle-3 { width: 400px; height: 400px; }
+.orbital-circle-4 { width: 500px; height: 500px; }
+
+.center-device {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.orbital-device {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease-in-out;
+}
+
+.device-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-white);
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.device-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.device-button.selected {
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.device-button.center {
+  width: 80px;
+  height: 80px;
+  background: var(--color-primary);
+}
+
+.device-button.center .device-icon {
+  color: var(--color-white);
+}
+
+.device-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-primary);
+}
+
+.device-name {
+  font-size: 0.65rem;
+  color: var(--color-gray-600);
+  position: absolute;
+  bottom: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .orbital-view {
+    transform: scale(0.8);
+  }
+}
+
+@media (max-width: 640px) {
+  .orbital-view {
+    transform: scale(0.6);
+  }
+}
+
