@@ -59,3 +59,23 @@
   margin-top: 0.5rem;
 }
 
+.upload-area {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  margin: 16px;
+  transition: all 0.3s ease;
+}
+
+.upload-area.active {
+  border-color: #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
+}
+
+.upload-area p {
+  margin: 0;
+  color: #666;
+}
+

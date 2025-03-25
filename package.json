@@ -13,7 +13,8 @@
     "f:dev": "turbo run dev --filter=@fataak/client",
     "b:dev": "turbo run dev --filter=@fataak/server",
     "f:build": "turbo run build --filter=@fataak/client",
-    "b:build": "turbo run build --filter=@fataak/server"
+    "b:build": "turbo run build --filter=@fataak/server",
+    "h:build": "turbo run build --filter=@fataak/event-helpers"
   },
   "packageManager": "pnpm@10.4.1",
   "keywords": [],

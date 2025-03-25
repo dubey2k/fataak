@@ -3,6 +3,7 @@ import WebSocket, { Server as WebSocketServer } from "ws";
 import { IncomingMessage } from "http";
 import parser from "ua-parser-js";
 import { uniqueNamesGenerator, animals, colors } from "unique-names-generator";
+import { ServerEvents } from "@fataak/event-helpers/build/Events";
 
 // Handle SIGINT and SIGTERM
 const handleExit = (signal: string) => {
@@ -46,7 +47,7 @@ class SnapdropServer {
         this._keepAlive(peer);
 
         this._send(peer, {
-            type: "display-name",
+            type: ServerEvents.display_name,
             message: {
                 displayName: peer.name.displayName,
                 deviceName: peer.name.deviceName,
