@@ -1,15 +1,15 @@
-import { Events, LocalEvents, PeerEvents, PeerManagerEvents, ServerEvents } from "./Events";
+import { PeerInfo } from "../types/PeerInfo.ts";
+import {
+    EventDetails, Events, LocalEvent, LocalEvents, PeerEvent, PeerEvents,
+    PeerFileHeaderEvent, PeerFilePartitionEvent, PeerFileProgressEvent, PeerManagerEvents, ServerEvents, ServerReq,
+} from "./Events.ts";
+// } from "@fataak/event-helpers";
+
 
 const isRtcSupported = !!(window.RTCPeerConnection)
 // || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
 
-interface Message {
-    type: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any;
-}
-
-interface SignalMessage extends Message {
+interface SignalMessage extends EventDetails {
     sdp?: RTCSessionDescriptionInit;
     ice?: RTCIceCandidateInit;
     sender?: string;
@@ -40,34 +40,37 @@ class ServerConnection {
     }
 
     private _onMessage(msg: string) {
-        const message: Message = JSON.parse(msg);
-        if (message.type != "signal")
+        const message: ServerReq = JSON.parse(msg);
+        if (message.type != PeerManagerEvents.signal)
             console.log('WS:', message);
         switch (message.type) {
             case ServerEvents.peers:
-                Events.fire(PeerManagerEvents.peers, message.peers);
+                Events.fire(message);
                 break;
             case ServerEvents.peer_joined:
-                Events.fire(PeerManagerEvents.peer_joined, message.peer);
+                Events.fire(message);
                 break;
             case ServerEvents.peer_left:
-                Events.fire(PeerManagerEvents.peer_left, message.peerId);
+                Events.fire(message);
                 break;
-            case "signal":
-                Events.fire("signal", message);
+            case ServerEvents.signal:
+                Events.fire(message);
                 break;
             case ServerEvents.ping:
-                this.send({ type: 'pong' });
+                this.send({
+                    type: ServerEvents.pong,
+                    event_type: "SERVER",
+                });
                 break;
             case ServerEvents.display_name:
-                Events.fire(ServerEvents.display_name, message);
+                Events.fire(message);
                 break;
             default:
                 console.error('WS: unknown message type', message);
         }
     }
 
-    send(message: Message) {
+    send(message: EventDetails) {
         if (!this._isConnected()) return;
         this._socket!.send(JSON.stringify(message));
     }
@@ -75,14 +78,17 @@ class ServerConnection {
     private _endpoint(): string {
         const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
         const webrtc = isRtcSupported ? 'webrtc' : 'fallback';
-        const url = `${protocol}://192.168.1.4:3000/${webrtc}`;
+        const url = `${protocol}://192.168.1.5:3000/${webrtc}`;
         //TODO: change this while deployment
         // const url = `${protocol}://${location.host}${location.pathname}server${webrtc}`;
         return url;
     }
 
     private _disconnect() {
-        this.send({ type: ServerEvents.disconnect });
+        this.send({
+            type: ServerEvents.disconnect,
+            event_type: "SERVER",
+        });
         if (this._socket) {
             this._socket.onclose = null;
             this._socket.close();
@@ -91,7 +97,7 @@ class ServerConnection {
 
     private _onDisconnect() {
         console.log('WS: server disconnected');
-        Events.fire(PeerEvents.notify_user, { "message": 'Connection lost. Retry in 5 seconds...' });
+        Events.fire({ event_type: "LOCAL", type: LocalEvents.notify_user, message: 'Connection lost. Retry in 5 seconds...' } as LocalEvent);
         if (this._reconnectTimer)
             clearTimeout(this._reconnectTimer);
         this._reconnectTimer = setTimeout(() => this._connect(), 5000);
@@ -129,7 +135,7 @@ export abstract class Peer {
         this._peerId = peerId;
     }
 
-    sendJSON(message: Message) {
+    sendJSON(message: EventDetails) {
         this._send(JSON.stringify(message));
     }
 
@@ -151,9 +157,12 @@ export abstract class Peer {
     private _sendFile(file: File) {
         this.sendJSON({
             type: PeerEvents.header,
-            name: file.name,
-            mime: file.type,
-            size: file.size
+            event_type: "PEER",
+            data: {
+                name: file.name,
+                mime: file.type,
+                size: file.size,
+            }
         });
         this._chunker = new FileChunker(file,
             (chunk: ArrayBuffer) => this._send(chunk),
@@ -162,11 +171,12 @@ export abstract class Peer {
     }
 
     private _onPartitionEnd(offset: number) {
-        this.sendJSON({ type: PeerEvents.partition, offset: offset });
-    }
+        this.sendJSON({ event_type: "PEER", type: PeerEvents.partition, data: { offset: offset } });
+    };
+
 
     private _onReceivedPartitionEnd(offset: number) {
-        this.sendJSON({ type: PeerEvents.partition_received, offset: offset });
+        this.sendJSON({ event_type: "PEER", type: PeerEvents.partition_received, data: { offset: offset } })
     }
 
     private _sendNextPartition() {
@@ -175,53 +185,59 @@ export abstract class Peer {
     }
 
     private _sendProgress(progress: number) {
-        this.sendJSON({ type: 'progress', progress: progress });
+        this.sendJSON({ event_type: "PEER", type: PeerEvents.progress, data: { progress: progress } });
     }
 
     _onMessage(message: string | ArrayBuffer) {
+        console.log("WS:Network:Peer", message);
         if (typeof message !== 'string') {
             this._onChunkReceived(message);
             return;
         }
-        const parsedMessage: Message = JSON.parse(message);
-        console.log("WS:", parsedMessage);
-        switch (parsedMessage.type) {
-            case 'peer-declined':
-                Events.fire('peer-declined', { "message": parsedMessage });
+        const parsedEvent: EventDetails = JSON.parse(message);
+        switch (parsedEvent.type) {
+            case PeerEvents.peer_declined:
+                Events.fire(parsedEvent);
                 break;
-            case 'peer-requested':
-                Events.fire('peer-requested', { "message": parsedMessage });
+            case PeerEvents.peer_requested:
+                Events.fire(parsedEvent);
                 break;
-            case 'peer-disconnected':
-                Events.fire('peer-disconnected', { "message": parsedMessage });
+            case PeerEvents.peer_disconnected:
+                Events.fire(parsedEvent);
                 break;
-            case 'header':
-                this._onFileHeader(parsedMessage);
+            case PeerEvents.header: {
+                const partitionEvent = parsedEvent as PeerFileHeaderEvent;
+                this._onFileHeader(partitionEvent);
                 break;
-            case 'partition':
-                this._onReceivedPartitionEnd(parsedMessage.offset);
+            }
+            case PeerEvents.partition: {
+                const partitionEvent = parsedEvent as PeerFilePartitionEvent;
+                this._onReceivedPartitionEnd(partitionEvent.partition);
                 break;
-            case 'partition-received':
+            }
+            case PeerEvents.partition_received:
                 this._sendNextPartition();
                 break;
-            case 'progress':
-                this._onDownloadProgress(parsedMessage.progress);
+            case PeerEvents.progress: {
+                const partitionEvent = parsedEvent as PeerFileProgressEvent;
+                this._onDownloadProgress(partitionEvent.progress);
                 break;
-            case 'transfer-complete':
+            }
+            case PeerEvents.transfer_complete:
                 this._onTransferCompleted();
                 break;
-            case 'text':
-                this._onTextReceived(parsedMessage);
+            case PeerEvents.text:
+                this._onTextReceived(parsedEvent);
                 break;
         }
     }
 
-    private _onFileHeader(header: Message) {
+    private _onFileHeader(header: PeerFileHeaderEvent) {
         this._lastProgress = 0;
         this._digester = new FileDigester({
-            name: header.name,
-            mime: header.mime,
-            size: header.size
+            name: header.data.name,
+            mime: header.data.mime,
+            size: header.data.size
         }, (file: unknown) => this._onFileReceived(file));
     }
 
@@ -238,33 +254,33 @@ export abstract class Peer {
     }
 
     private _onDownloadProgress(progress: number) {
-        Events.fire('file-progress', { sender: this._peerId, progress: progress });
+        Events.fire({ event_type: "PEER", type: PeerEvents.file_progress, peer_id: this._peerId, progress } as PeerEvent);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _onFileReceived(proxyFile: any) {
-        Events.fire('file-received', proxyFile);
-        this.sendJSON({ type: 'transfer-complete' });
+        Events.fire({ event_type: "PEER", type: PeerEvents.file_received, data: { proxyFile } });
+        this.sendJSON({ event_type: "PEER", type: PeerEvents.transfer_complete });
     }
 
     private _onTransferCompleted() {
         this._onDownloadProgress(1);
         this._busy = false;
         this._dequeueFile();
-        Events.fire('notify-user', { "message": 'File transfer completed.' });
+        Events.fire({ event_type: "PEER", type: PeerEvents.notify_user, "message": 'File transfer completed.' });
     }
 
     sendText(text: string) {
         const unescaped = btoa(unescape(encodeURIComponent(text)));
-        this.sendJSON({ type: 'text', text: unescaped });
+        this.sendJSON({ event_type: "PEER", type: PeerEvents.text, message: unescaped });
     }
 
-    private async _onTextReceived(message: Message) {
+    private async _onTextReceived(message: EventDetails) {
         try {
             // await navigator.clipboard.writeText("Amit Dubey");
-            const escaped = decodeURIComponent(atob(message.text));
+            const escaped = decodeURIComponent(atob(message.message ?? ""));
             alert(escaped);
-            Events.fire('text-received', { text: escaped, sender: this._peerId });
+            Events.fire({ event_type: "PEER", type: PeerEvents.text_received, message: escaped, peer_id: this._peerId } as PeerEvent);
         } catch (error) {
             console.error((error as Error).message);
         }
@@ -311,27 +327,31 @@ class RTCPeer extends Peer {
 
     private _openChannel() {
         const channel = this._conn!.createDataChannel('data-channel', {
-            ordered: true
+            ordered: true,
         });
-        channel.onopen = (e: Event) => this._onChannelOpened(e);
+        channel.onopen = (e: Event) => {
+            this._onChannelOpened(e);
+        };
+
+        console.log("ON_OPEN::", channel.onopen.toString());
         this._conn!.createOffer().then(d => this._onDescription(d)).catch(e => this._onError(e));
     }
 
     private _onDescription(description: RTCSessionDescriptionInit) {
         this._conn!.setLocalDescription(description)
-            .then(() => this._sendSignal({ type: "signal", sdp: description }))
+            .then(() => this._sendSignal({ event_type: "PEER", type: PeerEvents.signal, sdp: description }))
             .catch(e => this._onError(e));
     }
 
     private _onIceCandidate(event: RTCPeerConnectionIceEvent) {
         if (!event.candidate) return;
-        this._sendSignal({ type: "signal", ice: event.candidate });
+        this._sendSignal({ event_type: "PEER", type: PeerEvents.signal, ice: event.candidate });
     }
 
     onServerMessage(message: SignalMessage) {
         if (!this._conn) this._connect(message.sender!, false);
 
-        if (message.sdp) {
+        if (message.sdp && this._conn!.signalingState !== "stable") {
             this._conn!.setRemoteDescription(new RTCSessionDescription(message.sdp))
                 .then(() => {
                     if (message.sdp!.type === 'offer') {
@@ -349,9 +369,13 @@ class RTCPeer extends Peer {
         console.log('RTC: channel opened with', this._peerId);
         const channel = (event as RTCDataChannelEvent).channel || (event.target as RTCDataChannel);
         channel.binaryType = 'arraybuffer';
-        channel.onmessage = (e: MessageEvent) => this._onMessage(e.data);
+        channel.onmessage = (e: MessageEvent) => {
+            console.log("ON_MSG::", e);
+            this._onMessage(e.data)
+        };
         channel.onclose = () => this._onChannelClosed();
         this._channel = channel;
+        console.log("ON_MSG::_onChannelOpened\n\n", this._channel.onmessage?.toString());
     }
 
     private _onChannelClosed() {
@@ -384,12 +408,13 @@ class RTCPeer extends Peer {
     }
 
     private _onError(error: Error) {
-        console.error(error);
+        console.error("ERROR::", error);
     }
 
-    // _send(message: string) {
     _send(message: string | ArrayBuffer) {
         if (!this._channel) return this.refresh();
+
+        console.log("SEND:::::", this._channel.send.toString());
 
         if (typeof message == 'string') {
             this._channel.send(message as string);
@@ -399,8 +424,7 @@ class RTCPeer extends Peer {
     }
 
     private _sendSignal(signal: SignalMessage) {
-        signal.type = 'signal';
-        signal.to = this._peerId;
+        signal.data = { peer_id: this._peerId };
         this._server.send(signal);
     }
 
@@ -426,10 +450,11 @@ class PeersManager {
     private constructor(serverConnection: ServerConnection) {
         this._server = serverConnection;
         Events.on(PeerManagerEvents.signal, (e: CustomEvent) => this._onMessage(e.detail));
-        Events.on(PeerManagerEvents.peers, (e: CustomEvent) => this._onPeers(e.detail));
+        Events.on(PeerManagerEvents.peers, (e: CustomEvent) => this._onPeers(e.detail.peers));
         Events.on(PeerManagerEvents.files_selected, (e: CustomEvent) => this._onFilesSelected(e.detail));
         Events.on(PeerManagerEvents.send_text, (e: CustomEvent) => this._onSendText(e.detail));
-        Events.on(PeerManagerEvents.peer_left, (e: CustomEvent) => this._onPeerLeft(e.detail));
+        Events.on(PeerManagerEvents.peer_joined, (e: CustomEvent) => this._onPeerJoined(e.detail));
+        Events.on(PeerManagerEvents.peer_left, (e: CustomEvent) => this._onPeerLeft(e.detail.peerId));
     }
 
     public static getInstance(): PeersManager {
@@ -468,11 +493,18 @@ class PeersManager {
     }
 
     private _onFilesSelected(message: { to: string, files: File[] }) {
-        this.peers[message.to].sendFiles(message.files);
+        const peer = this.peers[message.to];
+        if (peer) {
+            Events.fire({ event_type: "PEER", type: PeerEvents.file_progress, peer_id: message.to, progress: 0 } as PeerFileProgressEvent);
+            peer.sendFiles(message.files);
+        }
     }
 
     private _onSendText(message: { to: string, text: string }) {
-        this.peers[message.to].sendText(message.text);
+        const peer = this.peers[message.to];
+        if (peer) {
+            peer.sendText(message.text);
+        }
     }
 
     private _onPeerLeft(peerId: string) {
@@ -480,6 +512,13 @@ class PeersManager {
         delete this.peers[peerId];
         if (!peer || !(peer instanceof RTCPeer)) return;
         peer._conn?.close();
+    }
+
+    private _onPeerJoined(peer: { peer: PeerInfo }) {
+        if (peer.peer.rtcSupported)
+            this.peers[peer.peer.id] = new RTCPeer(this._server, peer.peer.id);
+        else
+            this.peers[peer.peer.id] = new WSPeer(this._server, peer.peer.id);
     }
 }
 
@@ -492,8 +531,8 @@ class WSPeer extends Peer {
     }
 
     _send(message: string | ArrayBuffer) {
-        const msg: Message = typeof message === 'string' ? JSON.parse(message) : { type: 'binary', data: message };
-        msg.to = this._peerId;
+        const msg: ServerReq = typeof message === 'string' ? JSON.parse(message) : { type: 'binary', data: message };
+        msg.peer_id = this._peerId;
         this._server.send(msg);
     }
 }

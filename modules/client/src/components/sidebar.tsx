@@ -12,12 +12,21 @@ type SidebarProps = {
 
 export function Sidebar({ selectedDevice }: SidebarProps) {
   const handleUpload = async (file: File) => {
-    //
+    if (selectedDevice !== null) {
+      Events.fire("files-selected", { to: selectedDevice.id, files: [file] });
+    }
   };
 
   const handleTextSend = async (text: string) => {
     if (selectedDevice !== null) {
       Events.fire("send-text", { to: selectedDevice.id, text: text });
+    }
+  };
+
+  const handleDisconnect = () => {
+    if (selectedDevice !== null) {
+      Events.fire("peer-disconnected", {});
+      Events.fire("peer-declined", {});
     }
   };
 
@@ -28,7 +37,7 @@ export function Sidebar({ selectedDevice }: SidebarProps) {
         <>
           <div className="device-connection">
             <span>Connected to Device</span>
-            <button className="disconnect-button">
+            <button className="disconnect-button" onClick={handleDisconnect}>
               <X />
             </button>
           </div>

@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
 import { Laptop, Smartphone, Tablet, Wifi, Monitor } from "lucide-react";
 import "./device-playground.css";
-import { PeerInfo } from "../types/PeerInfo";
-import { Events, LocalEvents } from "../utils/Events";
+import { PeerInfo, PeersData } from "../types/PeerInfo";
+import {
+  Events,
+  LocalEvents,
+  PeerEvent,
+  PeerEvents,
+  PeerManagerEvents,
+  ServerEvents,
+} from "../utils/Events";
 import { getPeersManager } from "../utils/Network";
+import React from "react";
 
 export type Device = {
   id: string;
@@ -30,6 +38,7 @@ export function DevicePlayground({
   selectedDevice,
 }: DevicePlaygroundProps) {
   const [devices, setDevices] = useState<Device[]>([]);
+  const [pendingRequest, setPendingRequest] = useState<Device | null>(null);
 
   useEffect(() => {
     const cleanupListeners = setEventListeners();
@@ -41,65 +50,80 @@ export function DevicePlayground({
 
   const setEventListeners = () => {
     const eventHandlers = [
-      { event: "peer-declined", handler: () => {} },
       {
-        event: "peer-requested",
+        event: PeerEvents.peer_declined,
+        handler: (e: CustomEvent<PeerInfo>) => {
+          alert(`Peer declined: ${e.detail.name.displayName}`);
+          setPendingRequest(null);
+        },
+      },
+      {
+        event: PeerEvents.peer_requested,
         handler: (e: CustomEvent<PeerInfo>) => {
           const ind = devices.findIndex((item) => item.id === e.detail.id);
+          console.log("Peer requested", e);
           if (ind !== -1) {
-            if (selectedDevice && selectedDevice.id !== devices[ind].id) {
-              Events.fire("peer-disconnected", {});
-            }
-            onDeviceSelect(devices[ind]);
+            setPendingRequest(devices[ind]);
           }
         },
       },
       {
-        event: "peer-disconnected",
+        event: PeerEvents.peer_accepted,
+        handler: (e: CustomEvent<PeerInfo>) => {
+          const ind = devices.findIndex((item) => item.id === e.detail.id);
+          if (ind !== -1) {
+            if (selectedDevice && selectedDevice.id !== devices[ind].id) {
+              if (selectedDevice) {
+                Events.fire({
+                  type: PeerEvents.peer_disconnected,
+                  peer_id: devices[ind].id,
+                  message: "Peer disconnected",
+                } as PeerEvent);
+              }
+              onDeviceSelect(devices[ind]);
+            }
+          }
+        },
+      },
+      {
+        event: PeerEvents.peer_disconnected,
         handler: () => {
           onDeviceSelect(null);
         },
       },
       {
-        event: "peer-joined",
-        handler: (e: CustomEvent<PeerInfo>) => addDevices([e.detail]),
+        event: PeerManagerEvents.peer_joined,
+        handler: (e: CustomEvent<{ peer: PeerInfo }>) =>
+          addDevices([e.detail.peer]),
       },
       {
-        event: "peer-left",
-        handler: (e: CustomEvent<PeerInfo>) => {
+        event: PeerManagerEvents.peer_left,
+        handler: (e: CustomEvent<{ peerId: string }>) => {
           const updatedDevices = devices.filter(
-            (item) => item.id !== e.detail.id
+            (item) => item.id !== e.detail.peerId
           );
           setDevices(updatedDevices);
         },
       },
       {
-        event: "peers",
-        handler: (e: CustomEvent<PeerInfo[]>) => addDevices(e.detail),
+        event: PeerManagerEvents.peers,
+        handler: (e: CustomEvent<PeersData>) => addDevices(e.detail.peers),
       },
       {
-        event: "file-progress",
+        event: PeerEvents.file_progress,
         handler: (e: CustomEvent) => console.log("OnFileProgress", e.detail),
       },
       {
-        event: "paste",
-        handler: (e: CustomEvent) => console.log("OnPaste", e.detail),
-      },
-      {
-        event: "display-name",
+        event: ServerEvents.display_name,
         handler: (e: CustomEvent<PeerInfo>) =>
           console.log("SetDisplayName", e.detail),
       },
       {
-        event: "file-received",
+        event: PeerEvents.file_received,
         handler: (e: CustomEvent) => console.log("OnFileReceived", e.detail),
       },
       {
-        event: "text-recipient",
-        handler: (e: CustomEvent) => console.log("OnTextRecipient", e.detail),
-      },
-      {
-        event: "text-received",
+        event: PeerEvents.text_received,
         handler: (e: CustomEvent) => console.log("OnTextReceived", e.detail),
       },
       {
@@ -122,14 +146,16 @@ export function DevicePlayground({
         (peer) => !prev.some((device) => device.id === peer.id)
       );
 
-      const newDevices: Device[] = newPeers.map((peer) => ({
-        id: peer.id,
-        name: peer.name.displayName,
-        type: "smartphone",
-        orbit: prev.length < 5 ? 1 : 2,
-        angle: 0,
-        peer: peer,
-      }));
+      const newDevices: Device[] = newPeers.map((peer) => {
+        return {
+          id: peer.id,
+          name: peer.name.displayName,
+          type: "smartphone",
+          orbit: prev.length < 5 ? 1 : 2,
+          angle: 0,
+          peer: peer,
+        };
+      });
 
       const updatedDevices = [...prev, ...newDevices];
 
@@ -170,8 +196,75 @@ export function DevicePlayground({
     return { x, y };
   };
 
+  const handleDeviceSelect = (device: Device) => {
+    if (selectedDevice?.id !== device.id) {
+      // Disconnect from current device if any
+      if (selectedDevice) {
+        Events.fire({
+          type: PeerEvents.peer_disconnected,
+          peer_id: device.id,
+          message: "Peer disconnected",
+        } as PeerEvent);
+      }
+      // Connect to new device
+      getPeersManager().sendTo(
+        device.id,
+        JSON.stringify({
+          type: PeerEvents.peer_requested,
+          id: device.id,
+          name: device.name,
+        })
+      );
+      // TODO: call this after the connection is established
+      // onDeviceSelect(device);
+    }
+  };
+
+  const handleAcceptRequest = () => {
+    if (pendingRequest) {
+      if (selectedDevice) {
+        Events.fire({
+          type: PeerEvents.peer_disconnected,
+          peer_id: pendingRequest.id,
+          message: "Peer disconnected",
+        } as PeerEvent);
+      }
+      getPeersManager().sendTo(
+        pendingRequest.id,
+        JSON.stringify({
+          type: "peer-accepted",
+        })
+      );
+      onDeviceSelect(pendingRequest);
+      setPendingRequest(null);
+    }
+  };
+
+  const handleDeclineRequest = () => {
+    if (pendingRequest) {
+      getPeersManager().sendTo(
+        pendingRequest.id,
+        JSON.stringify({
+          type: "peer-declined",
+        })
+      );
+      setPendingRequest(null);
+    }
+  };
+
   return (
     <div className="device-playground">
+      {pendingRequest && (
+        <div className="peer-request-overlay">
+          <div className="peer-request-dialog">
+            <p>{pendingRequest.name} wants to connect</p>
+            <div className="peer-request-actions">
+              <button onClick={handleAcceptRequest}>Accept</button>
+              <button onClick={handleDeclineRequest}>Decline</button>
+            </div>
+          </div>
+        </div>
+      )}
       {devices.length === 0 ? (
         <div className="searching-devices">
           <Wifi className="wifi-icon" />
@@ -216,12 +309,7 @@ export function DevicePlayground({
                     className={`device-button ${
                       selectedDevice?.id === device.id ? "selected" : ""
                     }`}
-                    onClick={() => {
-                      if (selectedDevice?.id !== device.id) {
-                        getPeersManager().sendTo(device.id, ""); // TODO: check this
-                        onDeviceSelect(device);
-                      }
-                    }}
+                    onClick={() => handleDeviceSelect(device)}
                   >
                     <Icon className="device-icon" />
                     <span className="device-name">{device.name}</span>

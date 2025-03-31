@@ -12,8 +12,7 @@ export enum ServerEvents {
     peer_joined = "peer-joined",
     peer_left = "peer-left",
     display_name = "display-name",
-    pong = "pong",
-    signal = "signal",
+    pong = "pong"
 }
 
 export enum PeerManagerEvents {

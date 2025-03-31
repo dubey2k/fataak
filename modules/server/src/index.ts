@@ -1,8 +1,9 @@
-import process from "process";
+import process, { send } from "process";
 import WebSocket, { Server as WebSocketServer } from "ws";
 import { IncomingMessage } from "http";
 import parser from "ua-parser-js";
 import { uniqueNamesGenerator, animals, colors } from "unique-names-generator";
+import { ServerEvents } from "@fataak/event-helpers/build/Events";
 
 // Handle SIGINT and SIGTERM
 const handleExit = (signal: string) => {
@@ -46,7 +47,7 @@ class SnapdropServer {
         this._keepAlive(peer);
 
         this._send(peer, {
-            type: "display-name",
+            type: ServerEvents.display_name,
             message: {
                 displayName: peer.name.displayName,
                 deviceName: peer.name.deviceName,
@@ -82,10 +83,10 @@ class SnapdropServer {
     }
 
     private _relayMessage(sender: Peer, message: any) {
-        if (message.to && this._rooms[sender.ip]) {
-            const recipient = this._rooms[sender.ip][message.to];
+        if (message.data.peer_id && this._rooms[sender.ip]) {
+            const recipient = this._rooms[sender.ip][message.data.peer_id];
             if (recipient) {
-                delete message.to;
+                delete message.data.peer_id;
                 message.sender = sender.id;
                 this._send(recipient, message);
             }

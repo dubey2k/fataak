@@ -10,3 +10,7 @@ export type PeerInfo = {
     };
     rtcSupported: boolean;
 }
+
+export type PeersData = {
+    peers: PeerInfo[];
+}
