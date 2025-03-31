@@ -207,7 +207,6 @@ export function DevicePlayground({
         } as PeerEvent);
       }
       // Connect to new device
-      console.log("PEER_REQUEST_DATA::", device);
       getPeersManager().sendTo(
         device.id,
         JSON.stringify({

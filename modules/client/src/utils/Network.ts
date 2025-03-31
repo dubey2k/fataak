@@ -53,7 +53,7 @@ class ServerConnection {
             case ServerEvents.peer_left:
                 Events.fire(message);
                 break;
-            case PeerManagerEvents.signal:
+            case ServerEvents.signal:
                 Events.fire(message);
                 break;
             case ServerEvents.ping:
@@ -78,7 +78,7 @@ class ServerConnection {
     private _endpoint(): string {
         const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
         const webrtc = isRtcSupported ? 'webrtc' : 'fallback';
-        const url = `${protocol}://192.168.0.106:3000/${webrtc}`;
+        const url = `${protocol}://192.168.1.5:3000/${webrtc}`;
         //TODO: change this while deployment
         // const url = `${protocol}://${location.host}${location.pathname}server${webrtc}`;
         return url;
@@ -189,7 +189,7 @@ export abstract class Peer {
     }
 
     _onMessage(message: string | ArrayBuffer) {
-        console.log("WS:Network", message);
+        console.log("WS:Network:Peer", message);
         if (typeof message !== 'string') {
             this._onChunkReceived(message);
             return;
@@ -308,13 +308,10 @@ class RTCPeer extends Peer {
 
     private _connect(peerId: string, isCaller: boolean) {
         if (!this._conn) this._openConnection(peerId, isCaller);
-        console.log("SERVER::", this._conn);
 
         if (isCaller) {
-            console.log("SERVER::isCaller");
             this._openChannel();
         } else {
-            console.log("SERVER::else");
             this._conn!.ondatachannel = (e: RTCDataChannelEvent) => this._onChannelOpened(e);
         }
     }
@@ -332,11 +329,11 @@ class RTCPeer extends Peer {
         const channel = this._conn!.createDataChannel('data-channel', {
             ordered: true,
         });
-        console.log("SERVER::_openChannel", channel);
         channel.onopen = (e: Event) => {
-            console.log("CHANNEL::onopen", e);
             this._onChannelOpened(e);
         };
+
+        console.log("ON_OPEN::", channel.onopen.toString());
         this._conn!.createOffer().then(d => this._onDescription(d)).catch(e => this._onError(e));
     }
 
@@ -354,7 +351,7 @@ class RTCPeer extends Peer {
     onServerMessage(message: SignalMessage) {
         if (!this._conn) this._connect(message.sender!, false);
 
-        if (message.sdp) {
+        if (message.sdp && this._conn!.signalingState !== "stable") {
             this._conn!.setRemoteDescription(new RTCSessionDescription(message.sdp))
                 .then(() => {
                     if (message.sdp!.type === 'offer') {
@@ -372,9 +369,13 @@ class RTCPeer extends Peer {
         console.log('RTC: channel opened with', this._peerId);
         const channel = (event as RTCDataChannelEvent).channel || (event.target as RTCDataChannel);
         channel.binaryType = 'arraybuffer';
-        channel.onmessage = (e: MessageEvent) => this._onMessage(e.data);
+        channel.onmessage = (e: MessageEvent) => {
+            console.log("ON_MSG::", e);
+            this._onMessage(e.data)
+        };
         channel.onclose = () => this._onChannelClosed();
         this._channel = channel;
+        console.log("ON_MSG::_onChannelOpened\n\n", this._channel.onmessage?.toString());
     }
 
     private _onChannelClosed() {
@@ -410,12 +411,10 @@ class RTCPeer extends Peer {
         console.error("ERROR::", error);
     }
 
-    // _send(message: string) {
     _send(message: string | ArrayBuffer) {
-        console.log("PEERS::_SEND", message);
         if (!this._channel) return this.refresh();
 
-        console.log("PEERS::_SEND_CHANNEL", this._channel);
+        console.log("SEND:::::", this._channel.send.toString());
 
         if (typeof message == 'string') {
             this._channel.send(message as string);
