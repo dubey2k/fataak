@@ -75,7 +75,7 @@ class ServerConnection {
     private _endpoint(): string {
         const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
         const webrtc = isRtcSupported ? 'webrtc' : 'fallback';
-        const url = `${protocol}://192.168.1.4:3000/${webrtc}`;
+        const url = `${protocol}://192.168.1.8:3000/${webrtc}`;
         //TODO: change this while deployment
         // const url = `${protocol}://${location.host}${location.pathname}server${webrtc}`;
         return url;
