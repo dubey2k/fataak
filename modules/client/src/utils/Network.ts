@@ -1,4 +1,3 @@
-import { PeerInfo } from "../types/PeerInfo.ts";
 import {
     EventDetails, Events, LocalEvent, LocalEvents, PeerEvent, PeerEvents,
     PeerFileHeaderEvent, PeerFilePartitionEvent, PeerFileProgressEvent, PeerManagerEvents, ServerEvents, ServerReq,
@@ -78,7 +77,7 @@ class ServerConnection {
     private _endpoint(): string {
         const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
         const webrtc = isRtcSupported ? 'webrtc' : 'fallback';
-        const url = `${protocol}://192.168.1.5:3000/${webrtc}`;
+        const url = `${protocol}://192.168.1.8:3000/${webrtc}`;
         //TODO: change this while deployment
         // const url = `${protocol}://${location.host}${location.pathname}server${webrtc}`;
         return url;
@@ -333,7 +332,6 @@ class RTCPeer extends Peer {
             this._onChannelOpened(e);
         };
 
-        console.log("ON_OPEN::", channel.onopen.toString());
         this._conn!.createOffer().then(d => this._onDescription(d)).catch(e => this._onError(e));
     }
 
@@ -351,7 +349,7 @@ class RTCPeer extends Peer {
     onServerMessage(message: SignalMessage) {
         if (!this._conn) this._connect(message.sender!, false);
 
-        if (message.sdp && this._conn!.signalingState !== "stable") {
+        if (message.sdp) {
             this._conn!.setRemoteDescription(new RTCSessionDescription(message.sdp))
                 .then(() => {
                     if (message.sdp!.type === 'offer') {
@@ -453,7 +451,7 @@ class PeersManager {
         Events.on(PeerManagerEvents.peers, (e: CustomEvent) => this._onPeers(e.detail.peers));
         Events.on(PeerManagerEvents.files_selected, (e: CustomEvent) => this._onFilesSelected(e.detail));
         Events.on(PeerManagerEvents.send_text, (e: CustomEvent) => this._onSendText(e.detail));
-        Events.on(PeerManagerEvents.peer_joined, (e: CustomEvent) => this._onPeerJoined(e.detail));
+        // Events.on(PeerManagerEvents.peer_joined, (e: CustomEvent) => this._onPeerJoined(e.detail));
         Events.on(PeerManagerEvents.peer_left, (e: CustomEvent) => this._onPeerLeft(e.detail.peerId));
     }
 
@@ -514,12 +512,12 @@ class PeersManager {
         peer._conn?.close();
     }
 
-    private _onPeerJoined(peer: { peer: PeerInfo }) {
-        if (peer.peer.rtcSupported)
-            this.peers[peer.peer.id] = new RTCPeer(this._server, peer.peer.id);
-        else
-            this.peers[peer.peer.id] = new WSPeer(this._server, peer.peer.id);
-    }
+    // private _onPeerJoined(peer: { peer: PeerInfo }) {
+    //     if (peer.peer.rtcSupported)
+    //         this.peers[peer.peer.id] = new RTCPeer(this._server, peer.peer.id);
+    //     else
+    //         this.peers[peer.peer.id] = new WSPeer(this._server, peer.peer.id);
+    // }
 }
 
 class WSPeer extends Peer {
